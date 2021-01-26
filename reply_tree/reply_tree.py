@@ -85,7 +85,7 @@ def get_data(tweet, data_path="../data", max_count=100):
     """
     # Create directory with tweet id
     if not os.path.isdir(data_path):
-        raise OSError(1, "Not a directory", "data_path")
+        raise OSError(1, "Not a directory", data_path)
     # Create directory with tweet id
     if not os.path.isdir(f'{data_path}/{tweet}'):
         os.mkdir(f"../data/{tweet}")
