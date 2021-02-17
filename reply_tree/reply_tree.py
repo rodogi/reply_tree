@@ -3,6 +3,7 @@
 import requests
 import os
 import json
+import time
 
 
 def auth():
@@ -18,7 +19,7 @@ def auth():
     return bearer_token
 
 
-def create_url(tweet, next_token=None, max_count=100, **kwargs):
+def create_url(tweet, next_token=None, max_count=100, type='all', **kwargs):
     """Create the url to send to Twitter API V2.
 
     Tweet fields for each answer queried by default are:
@@ -33,6 +34,8 @@ def create_url(tweet, next_token=None, max_count=100, **kwargs):
                  reply tweet is not complete.
     max_count : int (optional), maximum number of tweets returned, has to be
                within the range [1, 100).
+    type : 'all' or 'recent'. 'recent' looks up tweets from last week, 'all' from all time,
+            'all' requires academic access
 
     **kwargs : optional, Tweet Fields. See:
     https://developer.twitter.com/en/docs/labs/tweets-and-users/api-reference/get-tweets
@@ -48,10 +51,10 @@ def create_url(tweet, next_token=None, max_count=100, **kwargs):
         for kw in kwargs:
             tweet_fields += f",{kwargs[kw]}"
     if next_token:
-        url = ("https://api.twitter.com/2/tweets/search/recent?query="
+        url = (f"https://api.twitter.com/2/tweets/search/{type}?query="
                f"{query}&{tweet_fields}&{max_results}&next_token={next_token}")
     else:
-        url = ("https://api.twitter.com/2/tweets/search/recent?query="
+        url = (f"https://api.twitter.com/2/tweets/search/{type}?query="
                f"{query}&{tweet_fields}&{max_results}")
 
     return url
@@ -69,7 +72,7 @@ def connect_to_endpoint(url, headers):
     return response
 
 
-def get_data(tweet, data_path="../data", max_count=100):
+def get_data(tweet, data_path="../data", max_count=100, type='all'):
     """Create a new directory `tweet' and save the reply tree there.
 
 
@@ -88,16 +91,18 @@ def get_data(tweet, data_path="../data", max_count=100):
         raise OSError(1, "Not a directory", data_path)
     # Create directory with tweet id
     if not os.path.isdir(f'{data_path}/{tweet}'):
-        os.mkdir(f"../data/{tweet}")
+        os.mkdir(f'{data_path}/{tweet}')
     bearer_token = auth()
     c = 0
     next_token = None
     while True:
-        url = create_url(tweet, next_token=next_token, max_count=max_count)
+        if type=='all':
+            time.sleep(1) ## 1 query / sec restriction for archive search
+        url = create_url(tweet, next_token=next_token, max_count=max_count, type=type)
         headers = create_headers(bearer_token)
         response = connect_to_endpoint(url, headers).json()
         c += 1
-        with open(f"../data/{tweet}/{c}.json", "w") as f:
+        with open(f"{data_path}/{tweet}/{c}.json", "w") as f:
             json.dump(response, f)
         if "next_token" not in response['meta']:
             break
